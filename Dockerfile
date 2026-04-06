@@ -9,3 +9,5 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # Tell Docker to use our script on startup
 ENTRYPOINT ["entrypoint.sh"]
+
+EXPOSE 80
