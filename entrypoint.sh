@@ -26,4 +26,5 @@ fi
 chown -R www-data:www-data /var/www/html
 
 echo "🚀 Starting Mautic..."
+export MAUTIC_URL="https://mautic-deployment.onrender.com"
 exec apache2-foreground
