@@ -14,13 +14,20 @@ if [ -f /etc/secrets/local.php ]; then
     echo "✅ Config copied."
 fi
 
-# 3. THE FIX: Force Mautic to trust Render's Load Balancer (SSL fix)
-# This prevents the 301 redirect loop
-sed -i '1a if (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") { $_SERVER["HTTPS"] = "on"; }' /var/www/html/index.php
+# 3. THE FIX: Only attempt 'sed' if index.php exists
+if [ -f "/var/www/html/index.php" ]; then
+    sed -i '1a if (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") { $_SERVER["HTTPS"] = "on"; }' /var/www/html/index.php
+    echo "✅ SSL Proxy fix applied to index.php."
+else
+    echo "⚠️ Warning: index.php not found yet. It will be created by Mautic on first run."
+fi
 
-# 4. Handle Mautic 5 path
+# 4. Handle Mautic 5 path compatibility
 mkdir -p /var/www/html/config
 cp "$MAUTIC_CONFIG_FILE" /var/www/html/config/local.php || true
+
+# 5. Final Permission Sync
+chown -R www-data:www-data /var/www/html
 
 echo "🚀 Starting Apache..."
 exec apache2-foreground
