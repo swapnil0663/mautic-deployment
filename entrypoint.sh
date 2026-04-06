@@ -1,29 +1,26 @@
 #!/bin/bash
 set -e
 
-# 1. Define paths
-SECRET_SOURCE="/etc/secrets/local.php"
+# 1. Paths
 MAUTIC_CONFIG_DIR="/var/www/html/app/config"
 MAUTIC_CONFIG_FILE="$MAUTIC_CONFIG_DIR/local.php"
 
-# 2. Ensure the directory exists
+# 2. Copy Secret
 mkdir -p "$MAUTIC_CONFIG_DIR"
-
-# 3. Copy the secret to a writable location and fix permissions
-if [ -f "$SECRET_SOURCE" ]; then
-    cp "$SECRET_SOURCE" "$MAUTIC_CONFIG_FILE"
-    # Now that it's a copy in a writable area, we can set permissions
+if [ -f /etc/secrets/local.php ]; then
+    cp /etc/secrets/local.php "$MAUTIC_CONFIG_FILE"
     chmod 644 "$MAUTIC_CONFIG_FILE"
     chown www-data:www-data "$MAUTIC_CONFIG_FILE"
-    echo "✅ Secret copied and permissions fixed at $MAUTIC_CONFIG_FILE"
-else
-    echo "⚠️ Warning: $SECRET_SOURCE not found. Mautic might start in installer mode."
+    echo "✅ Config copied."
 fi
 
-# 4. Handle Mautic 5 path compatibility as well
+# 3. THE FIX: Force Mautic to trust Render's Load Balancer (SSL fix)
+# This prevents the 301 redirect loop
+sed -i '1a if (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") { $_SERVER["HTTPS"] = "on"; }' /var/www/html/index.php
+
+# 4. Handle Mautic 5 path
 mkdir -p /var/www/html/config
 cp "$MAUTIC_CONFIG_FILE" /var/www/html/config/local.php || true
 
-# 5. Start Apache
 echo "🚀 Starting Apache..."
 exec apache2-foreground
