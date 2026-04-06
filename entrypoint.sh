@@ -1,21 +1,26 @@
 #!/bin/bash
 set -e
 
-# Create both possible config directories
+# 1. Create the directories
 mkdir -p /var/www/html/app/config
 mkdir -p /var/www/html/config
 
-# Create the symlink at runtime to BOTH locations
+# 2. Fix Permissions for the Secret (Crucial Step)
+# This allows the www-data user to read the secret provided by Render
 if [ -f /etc/secrets/local.php ]; then
+    chmod 644 /etc/secrets/local.php
+    
+    # Create symlinks for both possible Mautic versions
     ln -sf /etc/secrets/local.php /var/www/html/app/config/local.php
     ln -sf /etc/secrets/local.php /var/www/html/config/local.php
-    echo "✅ Symlinks created for Mautic 4 and Mautic 5 paths."
+    
+    echo "✅ Permissions set and symlinks created."
 else
     echo "⚠️ Warning: /etc/secrets/local.php not found."
 fi
 
-# Ensure permissions
-chown -R www-data:www-data /var/www/html/app/config /var/www/html/config
+# 3. Ensure Mautic can write to its own cache/logs
+chown -R www-data:www-data /var/www/html
 
 echo "🚀 Starting Apache..."
 exec apache2-foreground
