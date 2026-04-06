@@ -3,29 +3,21 @@ set -e
 
 # 1. Paths
 MAUTIC_ROOT="/var/www/html"
-MAUTIC_CONFIG_FILE="$MAUTIC_ROOT/config/local.php"
 
-# 2. Ensure directories exist
+# 2. Sync Configuration
 mkdir -p "$MAUTIC_ROOT/config"
-mkdir -p "$MAUTIC_ROOT/app/config"
-
-# 3. Sync Configuration from Render Secret
 if [ -f /etc/secrets/local.php ]; then
-    cp /etc/secrets/local.php "$MAUTIC_CONFIG_FILE"
-    cp /etc/secrets/local.php "$MAUTIC_ROOT/app/config/local.php"
-    chmod 644 "$MAUTIC_CONFIG_FILE"
-    chown www-data:www-data "$MAUTIC_CONFIG_FILE"
+    cp /etc/secrets/local.php "$MAUTIC_ROOT/config/local.php"
+    chown www-data:www-data "$MAUTIC_ROOT/config/local.php"
     echo "✅ Configuration synced."
 fi
 
-# 4. THE KILLSWITCH: Force HTTPS recognition
-# We inject this at the very top of index.php to stop the 301 loop
-if [ -f "$MAUTIC_ROOT/index.php" ]; then
-    sed -i '1a if (isset($_SERVER["HTTP_X_FORWARDED_PROTO"]) && $_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") { $_SERVER["HTTPS"] = "on"; }' "$MAUTIC_ROOT/index.php"
-    echo "✅ SSL Proxy fix injected into index.php."
-fi
+# 3. THE REDIRECT KILLER: Inject Apache Env Var
+# This tells the server to pretend the internal connection is HTTPS
+echo 'SetEnvIf X-Forwarded-Proto https HTTPS=on' > /etc/apache2/conf-enabled/render-ssl.conf
+echo "✅ Apache SSL Header fix applied."
 
-# 5. Permissions
+# 4. Permissions check
 chown -R www-data:www-data "$MAUTIC_ROOT"
 
 echo "🚀 Starting Apache..."
